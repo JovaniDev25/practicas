@@ -2,8 +2,9 @@ clc
 clear
 close all 
 
-m = modbus('tcpip', '192.168.100.47');
+%m = modbus('tcpip', '192.168.100.47');
 %m = modbus('tcpip', '192.168.43.90');
+m = modbus('tcpip', '192.168.100.30');
 m.Timeout = 3;
 serverId = 1;
 

@@ -7,8 +7,8 @@
 #endif
 #include <ModbusIP_ESP8266.h>
 
-#define CLK 35
-#define DT 34
+#define CLK 34
+#define DT 35
 
 ModbusIP mb;
 Fuzzy *fuzzy = new Fuzzy();
@@ -33,7 +33,7 @@ double Input, Output, Setpoint;
 unsigned long currentTime, previousTime;
 double elapsedTime;
 double error, lastError, cumError, rateError;
-double Kp = 0, Ki = 0, Kd = 5;
+double Kp = 0, Ki = 0.001, Kd = 5;
 
 void setup() {
   Serial.begin(115200);
@@ -172,7 +172,7 @@ void loop() {
 
   //Output = sat(PID(), -255, 255);
   Output = PID();
-  dutyCycle = Output;
+  dutyCycle = abs(Output);
   ledcWrite(pwmChannel, dutyCycle);
 
   mb.Hreg(pos_HREG, newPosition);
@@ -240,7 +240,7 @@ double PID() {
   cumError += error * elapsedTime;                // calcular la integral del error
   rateError = (error - lastError) / elapsedTime;  // calcular la derivada del error
 
-  double output = Kp * error;  //+ Ki * cumError + Kd * rateError;
+  double output = Kp * error + Ki * cumError;  //+ Ki * cumError + Kd * rateError;
 
   lastError = error;           // almacenar error anterior
   previousTime = currentTime;  // almacenar el tiempo anterior

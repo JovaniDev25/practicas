@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "ethernet-ip": "^1.2.5",
+    "st-ethernet-ip": "^2.6.7"
+  }
+}

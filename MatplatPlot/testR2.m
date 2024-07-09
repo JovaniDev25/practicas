@@ -13,7 +13,7 @@ x = zeros(1,j);
 dz = zeros(1,j);
 dx = zeros(1,j);
 dy = zeros(1,j);
-
+gain = zeros(1,j);
 ml = zeros(1,j);
 mr = zeros(1,j);
 
@@ -23,6 +23,7 @@ for i = 1:j
         posD = int2str(data(1));
         posC = int2str(abs(data(2)));
         ref = data(7);
+        kp = data(8);
         velD = int2str(data(3));
         velC = int2str(abs(data(4)));
         dx(i) = ref;
@@ -30,6 +31,7 @@ for i = 1:j
         dy(i) = str2num(velD + "." +  velC);
         ml(i) = data(5);
         mr(i) = data(6);   
+        gain(i) = kp;
      
 subplot(4,1,1)
 plot(xm,dz,"LineWidth",1.2)
@@ -48,14 +50,23 @@ ylabel("$v(k)$" , 'interpreter', 'latex','FontSize',14)
 
 subplot(4,1,3)
 plot(xm,ml,"LineWidth",1.2)
-title('Motor R', 'interpreter', 'latex','FontSize',18)
+hold on 
+plot(xm,mr,"LineWidth",1.2)
+hold off
+title('Motor R y L', 'interpreter', 'latex','FontSize',18)
 xlabel("k", 'interpreter', 'latex','FontSize',14)
 ylabel("$PWM$" , 'interpreter', 'latex','FontSize',14)
+% subplot(4,1,4)
+
+% title('Motor L', 'interpreter', 'latex','FontSize',18)
+% xlabel("$k$", 'interpreter', 'latex','FontSize',14)
+% ylabel("$PWM$" , 'interpreter', 'latex','FontSize',14)
+
 subplot(4,1,4)
-plot(xm,mr,"LineWidth",1.2)
-title('Motor L', 'interpreter', 'latex','FontSize',18)
+plot(xm,gain,"LineWidth",1.2)
+title('Ganancia Kp', 'interpreter', 'latex','FontSize',18)
 xlabel("$k$", 'interpreter', 'latex','FontSize',14)
-ylabel("$PWM$" , 'interpreter', 'latex','FontSize',14)
+ylabel("$Kp$" , 'interpreter', 'latex','FontSize',14)
 
 end
 

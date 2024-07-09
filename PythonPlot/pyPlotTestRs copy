@@ -1,0 +1,65 @@
+from pyModbusTCP.client import ModbusClient
+from pyModbusTCP import utils
+
+import matplotlib.pyplot as plt
+import numpy as np
+from itertools import count
+from matplotlib.animation import FuncAnimation
+
+#mbc = ModbusClient(host="192.168.100.47", port=502, unit_id=1, auto_open=True)
+mbc = ModbusClient(host="192.168.100.30", port=502, unit_id=1, auto_open=True)
+#mbc = ModbusClient(host="192.168.43.90", port=502, unit_id=1, auto_open=True)
+#mbc = ModbusClient(host="192.168.43.232", port=502, unit_id=1, auto_open=True)
+
+fig, axs = plt.subplots(3)
+x_vals= []
+y_vals= []
+yd_vals= []
+ydd_vals= []
+yml_vals= []
+ymr_vals= []
+aPosD= []
+aPosC = []
+aVelD= []
+aVelC = []
+aAceD= []
+aAceC = []
+index = count()
+
+
+def animate(i):
+    x_vals.append(next(index))
+    regs = mbc.read_holding_registers(1, 6)
+
+    if regs:
+        aPosD=utils.get_2comp(regs[0], 16)
+        aPosC=utils.get_2comp(regs[1], 16)
+        p = str(aPosD)+str('.')+str(abs(aPosC))
+        y_vals.append(float(p))   
+        aVelD=utils.get_2comp(regs[2], 16)
+        aVelC=utils.get_2comp(regs[3], 16)
+        v = str(aVelD)+str('.')+str(abs(aVelC))
+        yd_vals.append(float(v))  
+        aAceD=utils.get_2comp(regs[4], 16)
+        aAceC=utils.get_2comp(regs[5], 16)
+        a = str(aAceD)+str('.')+str(abs(aAceC))
+        ydd_vals.append(float(a))  
+        max_data_points = 200
+        if len(x_vals) > max_data_points:
+            x_vals.pop(0)
+            y_vals.pop(0)
+            yd_vals.pop(0)
+            ydd_vals.pop(0)
+        axs[0].clear()   
+        axs[1].clear()  
+        axs[2].clear()       
+        axs[0].plot(x_vals, y_vals)
+        axs[0].set_title('Angular ')
+        axs[1].plot(x_vals, yd_vals, 'tab:orange')
+        axs[2].plot(x_vals, ydd_vals, 'tab:red')
+
+
+    else:
+        print("read error")
+ani = FuncAnimation(fig, animate, interval=1)  # Update every 1000 ms (1 second)
+plt.show()

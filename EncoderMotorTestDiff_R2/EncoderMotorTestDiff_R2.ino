@@ -3,8 +3,8 @@
 
 Fuzzy *fuzzy = new Fuzzy();
 
-#define CLK 35  // CLK ENCODER
-#define DT 34   // DT ENCODER
+#define CLK 34  // CLK ENCODER
+#define DT 35   // DT ENCODER
 
 ESP32Encoder encoder;
 

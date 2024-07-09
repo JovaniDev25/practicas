@@ -1,0 +1,174 @@
+------
+
+#include <vcl.h>
+#pragma hdrstop
+
+#include "Unit1.h"
+//---------------------------------------------------------------------------
+#pragma package(smart_init)
+#pragma resource "*.dfm"
+TForm1 *Form1;
+HANDLE hSerial; // Variable para el puerto serial
+int pisoInicial = 1; // Piso inicial configurado
+int pisoActual = 1; // Piso actual
+//---------------------------------------------------------------------------
+__fastcall TForm1::TForm1(TComponent* Owner)
+        : TForm(Owner)
+{
+}
+//---------------------------------------------------------------------------
+HANDLE OpenSerialPort(const char* portName, int baudRate)
+{
+    // Abre el puerto serie especificado
+    HANDLE hSerial = CreateFile(portName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    // ... Código omitido para verificar si el puerto serie se abrió correctamente y configurar la comunicación ...
+
+    return hSerial;
+}
+
+//---------------------------------------------------------------------------
+void CloseSerialPort(HANDLE hSerial)
+{
+    // Cierra el puerto serie
+    if (hSerial != INVALID_HANDLE_VALUE)
+    {
+        CloseHandle(hSerial);
+    }
+}
+//---------------------------------------------------------------------------
+
+
+void SendCommandToArduino(const char* command)
+{
+    // Función para enviar un comando al Arduino a través del puerto serie
+
+    if (hSerial != INVALID_HANDLE_VALUE)
+    {
+        DWORD bytesWritten;
+        WriteFile(hSerial, command, strlen(command), &bytesWritten, NULL);
+    }
+}
+void MoveToFloor(int floor)
+{
+    // Función para mover el elevador al piso especificado
+
+    if (hSerial != INVALID_HANDLE_VALUE)
+    {
+        // Envía el comando al Arduino para moverse al piso especificado
+        char command[3];
+        command[0] = 'F';
+        command[1] = '0' + floor;
+        command[2] = '\0';
+    {
+        SendCommandToArduino(command);
+    }
+}
+}
+void StopElevator()
+{
+    // Función para detener el elevador
+
+    if (hSerial != INVALID_HANDLE_VALUE)
+        // Envía el comando de emergencia al Arduino (enviar el carácter 'S')
+        SendCommandToArduino("S");
+
+}
+void __fastcall TForm1::FormCreate(TObject *Sender)
+ {
+    // Al crear el formulario, se abre el puerto serial y se configura la comunicación
+
+    hSerial = OpenSerialPort("COM3",9600); // Abre el puerto serial COM9 a 9600 baudios
+
+    // Mover al piso inicial configurado
+    if (pisoInicial != pisoActual)
+    {
+        // Enviar comando al Arduino para moverse al piso inicial
+        MoveToFloor(pisoInicial);
+    }
+}
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::ButtonSubirClick(TObject *Sender)
+ {
+    // Al hacer clic en el botón "Subir"
+
+    if (pisoActual < 4)
+    {
+        pisoActual++;
+        Edit1->Text = IntToStr(pisoActual);
+
+        // Enviar comando al Arduino para subir un piso
+        MoveToFloor(pisoActual);
+        //SendCommandToArduino("U");
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ButtonBajarClick(TObject *Sender)
+{
+    // Al hacer clic en el botón "Bajar"
+
+    if (pisoActual > 1)
+    {
+        pisoActual--;
+        Edit1->Text = IntToStr(pisoActual);
+
+        // Enviar comando al Arduino para bajar un piso
+        MoveToFloor(pisoActual);
+        //SendCommandToArduino("D");
+    }
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ButtonDetenerClick(TObject *Sender)
+{
+    // Al hacer clic en el botón "Detener"
+
+    // Enviar comando al Arduino para detener el elevador
+    SendCommandToArduino("S");
+
+    // Actualizar el piso actual a pisoInicial
+    pisoActual = pisoInicial;
+    Edit1->Text = IntToStr(pisoActual);
+
+    MessageBox(NULL, "Elevador detenido", "Información", MB_OK);
+
+    // Agregar aquí cualquier otra acción que deba realizarse al detener el elevador
+}
+//---------------------------------------------------------------------------
+void __fastcall TForm1::ButtonIrPisoClick(TObject *Sender)
+{
+    // Al hacer clic en el botón "Ir a piso"
+
+    int pisoDeseado = StrToIntDef(Edit2->Text, 0); // Valor predeterminado en caso de que no se pueda convertir a entero
+
+    if (pisoDeseado >= 1 && pisoDeseado <= 4)
+    {
+        if (pisoDeseado == pisoActual)
+        {
+            MessageBox(NULL, "Es el piso actual", "Información", MB_OK);
+        }
+        else
+        {
+            // Enviar comando al Arduino para moverse al piso deseado
+            char command[3];
+            command[0] = 'F';
+            command[1] = '0' + pisoDeseado;
+            command[2] = '\0';
+            SendCommandToArduino(command);
+        }
+    }
+    else
+    {
+        MessageBox(NULL, "Piso inválido", "Error", MB_OK | MB_ICONERROR);
+    }
+}
+
+//---------------------------------------------------------------------------
+
+void __fastcall TForm1::BitBtn1Click(TObject *Sender)
+{
+    // Al cerrar el formulario, se cierra el puerto serial
+
+    CloseSerialPort(hSerial);
+}
+//---------------------------------------------------------------------------

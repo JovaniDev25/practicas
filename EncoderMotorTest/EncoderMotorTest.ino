@@ -1,7 +1,7 @@
 #include <ESP32Encoder.h>
 
-#define CLK 35  // CLK ENCODER
-#define DT 34   // DT ENCODER
+#define CLK 34  // CLK ENCODER
+#define DT 35   // DT ENCODER
 
 ESP32Encoder encoder;
 
@@ -13,28 +13,30 @@ long newPosition;
 const int freq = 30000;
 const int pwmChannel = 0;
 const int resolution = 8;
-int dutyCycle = 200;
+int dutyCycle = 0;
 unsigned long previousMillis = 0;
-const long interval = 100;
+const long interval = 10;
 
 double Input, Output, Setpoint;
 unsigned long currentTime, previousTime;
 double elapsedTime;
 double error, lastError, cumError, rateError;
-double Kp = 2, Ki = 0.001, Kd = 0;
+double Kp =10, Ki = 0, Kd = 0;
 
 void setup() {
   // sets the pins as outputs:
   pinMode(motor1Pin1, OUTPUT);
   pinMode(motor1Pin2, OUTPUT);
   pinMode(enable1Pin, OUTPUT);
+  ledcSetup(pwmChannel, freq, resolution);
+  ledcAttachPin(enable1Pin, pwmChannel);
+
 
   encoder.attachHalfQuad(DT, CLK);
   encoder.setCount(0);
   Serial.begin(115200);
 
-  ledcSetup(pwmChannel, freq, resolution);
-  ledcAttachPin(enable1Pin, pwmChannel);
+
 
   Serial.print("Testing Encoder/Motor...");
 }
@@ -53,14 +55,16 @@ void loop() {
     Serial.print("    Retro:   ");
     Serial.print(newPosition);
     Serial.print("    Out:   ");
-    Serial.println(Output);
+    Serial.println(dutyCycle);
     Serial.println("----------");
   }
-  ledcWrite(pwmChannel, Output);
+
+
   //dutyCycle = 200;
   Input = newPosition;
   Output = sat(PID(), -255, 255);
-  dutyCycle = Output;
+  dutyCycle = abs(Output);
+  ledcWrite(pwmChannel, dutyCycle);
 }
 
 void ReadStr() {
@@ -68,7 +72,7 @@ void ReadStr() {
     String str = Serial.readStringUntil('\n');
     //Serial.println(str);
     //if (str == "0") paso = 0;
-    if (str[0] == 'p' || str[0] == 'i' || str[0] == 'd' || str[0] == 's' || str[0] == 'f' || str[0] == 'b'|| str[0] == 'c') {
+    if (str[0] == 'p' || str[0] == 'i' || str[0] == 'd' || str[0] == 's' || str[0] == 'f' || str[0] == 'b' || str[0] == 'c') {
       int ln = str.length();
       String nm = str.substring(1);
       //Serial.println(nm);
@@ -93,7 +97,7 @@ void ReadStr() {
   }
 }
 
-
+map()
 double PID() {
   currentTime = millis();                              // obtener el tiempo actual
   elapsedTime = (double)(currentTime - previousTime);  // calcular el tiempo transcurrido
@@ -102,7 +106,7 @@ double PID() {
   cumError += error * elapsedTime;                // calcular la integral del error
   rateError = (error - lastError) / elapsedTime;  // calcular la derivada del error
 
-  double output = Kp * error+ Ki * cumError + Kd * rateError;  
+  double output = Kp * error; + Ki * cumError + Kd * rateError;
 
   lastError = error;           // almacenar error anterior
   previousTime = currentTime;  // almacenar el tiempo anterior

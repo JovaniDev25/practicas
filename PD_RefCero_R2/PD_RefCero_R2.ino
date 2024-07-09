@@ -17,7 +17,16 @@
 #define ML_PIN 16
 int DELAY = 1000;
 
-const int y1_HREG = 1, y2_HREG = 2, y1d_HREG = 3, y2d_HREG = 4, motorR_HREG = 5, motorL_HREG = 6, ref_HREG = 7, kp_HREG = 8, ki_HREG = 9, kd_HREG = 10;
+
+const int y1_HREG = 1, y2_HREG = 2, y3_HREG = 3;
+const int y1d_HREG = 4, y2d_HREG = 5, y3d_HREG = 6;
+const int y1dd_HREG = 7, y2dd_HREG = 8, y3dd_HREG = 9;
+const int y1v_HREG = 10, y2v_HREG = 11, y3v_HREG = 12;
+const int y1m_HREG = 13, y2m_HREG = 14, y3m_HREG = 15;
+const int y1o_HREG = 16, y2o_HREG = 17, y3o_HREG = 18;
+const int y1kp_HREG = 19, y2kp_HREG = 20, y3kp_HREG = 21;
+const int y1ki_HREG = 22, y2ki_HREG = 23, y3ki_HREG = 24;
+const int y1kd_HREG = 25, y2kd_HREG = 26, y3kd_HREG = 27;
 ModbusIP mb;
 
 uint16_t BNO055_SAMPLERATE_DELAY_MS = 100;
@@ -26,7 +35,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55, 0x28, &Wire);
 Servo mr;
 Servo ml;
 
-int xi, ln;
+int xi, ln,x;
 bool fi;
 String nm;
 
@@ -48,8 +57,8 @@ int cte;
 
 void setup() {
   Serial.begin(115200);
-  //WiFi.begin("Totalplay-ADAA", "ADAA3E6E4kmg2Yy6");
-  WiFi.begin("ControlerAuto", "15022489");
+  WiFi.begin("Totalplay-ADAA", "ADAA3E6E4kmg2Yy6");
+  //WiFi.begin("ControlerAuto", "15022489");
 
   //WiFi.begin("CyberSphere2.4", "KD6JVB8kmCRe");
   while (WiFi.status() != WL_CONNECTED) {
@@ -62,17 +71,7 @@ void setup() {
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 
-  mb.server();
-  mb.addHreg(y1_HREG, 0);
-  mb.addHreg(y2_HREG, 0);
-  mb.addHreg(y1d_HREG, 0);
-  mb.addHreg(y2d_HREG, 0);
-  mb.addHreg(motorR_HREG, 0);
-  mb.addHreg(motorL_HREG, 0);
-  mb.addHreg(ref_HREG, 0);
-  mb.addHreg(kp_HREG, 0);
-  mb.addHreg(ki_HREG, 0);
-  mb.addHreg(kd_HREG, 0);
+  initializeMB();
 
   while (!Serial) delay(10);
   Serial.println("Orientation Sensor Test");
@@ -115,10 +114,11 @@ void setup() {
   mr.writeMicroseconds(MIN_SIGNAL);
   Serial.println("The ESC is calibrated");
   Serial.println("----");
-  Serial.println("Now, type a values between 1000 and 2000 and press enter");
+  Serial.println("Now, type a values between 10 00 and 2000 and press enter");
   Serial.println("and the motor will start rotating.");
   Serial.println("Send 1000 to stop the motor and 2000 for full throttle");
   delay(8000);
+  mr.writeMicroseconds(1200);
 
   /////////////////////////////////////////////
   ml.attach(ML_PIN);
@@ -128,6 +128,7 @@ void setup() {
   Serial.print("\n");
   Serial.println("..wait 2 seconds and press any key.");
   ml.writeMicroseconds(MAX_SIGNAL);
+
 
   Setpoint = 0;
   delay(1000);
@@ -149,7 +150,8 @@ void setup() {
   Serial.println("Now, type a values between 1000 and 2000 and press enter");
   Serial.println("and the motor will start rotating.");
   Serial.println("Send 1000 to stop the motor and 2000 for full throttle");
-  delay(8000);
+  delay(9000);
+  ml.writeMicroseconds(1200);
 }
 
 void loop() {
@@ -160,34 +162,31 @@ void loop() {
   if (currentMillis - previousMillis >= interval) {
     previousMillis = currentMillis;
 
+
+    x++;
+    if (x == 360) x = 0;
+    Setpoint = sin(deg2rad(x))*15;
+
+
     sensors_event_t orientationData, angVelocityData;
     bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER);
     bno.getEvent(&angVelocityData, Adafruit_BNO055::VECTOR_GYROSCOPE);
     printEvent(&orientationData);
     printEvent(&angVelocityData);
+    WriteStr();
 
     InputR = aPos;
     InputL = aPos;
-    xi = ramp(0, 200, xi);
+    //xi = ramp(0, 200, xi);
     cte = 1200;
     OutputR = -sat(PID_R(), -200, 200) + cte;
     OutputL = sat(PID_L(), -200, 200) + cte;
 
-    WriteStr();
+
 
     mr.writeMicroseconds(OutputR);
     ml.writeMicroseconds(OutputL);
-    mb.Hreg(y1_HREG, aPos);
-    mb.Hreg(y2_HREG, ExDec(aPos));
-    mb.Hreg(y1d_HREG, aVel);
-    mb.Hreg(y2d_HREG, ExDec(aVel));
-    mb.Hreg(motorR_HREG, OutputR - cte);
-    mb.Hreg(motorL_HREG, OutputL - cte);
-    mb.Hreg(ref_HREG, Setpoint);
-    mb.Hreg(kp_HREG, Kp);
-    mb.Hreg(ki_HREG, Ki);
-    mb.Hreg(kd_HREG, Kd);
-    mb.task();
+    modbusW();
   }
 }
 
@@ -249,11 +248,7 @@ double PID_L() {
   return output;
 }
 
-int ExDec(float Value) {
-  int IntegerPart = (int)(Value);
-  int DecimalPart = 10000 * (Value - IntegerPart);
-  return DecimalPart;
-}
+
 
 void ReadStr() {
   if (Serial.available() > 0) {
@@ -270,12 +265,12 @@ void ReadStr() {
       }
       if (str[0] == 'd') Kd = nm.toFloat();
       if (str[0] == 's') {
-        sant = 
         Setpoint = nm.toInt();
-        
-    };
+      }
+    }
   }
 }
+
 
 void WriteStr() {
   Serial.print("aPos:  ");
@@ -306,4 +301,98 @@ double sat(double x, int ymin, int ymax) {
   else if (x < ymin) yout = ymin;
   else yout = x;
   return yout;
+}
+
+int ExDec(float Value) {
+  int DecimalPart;
+  if (Value != 0) {
+    int IntegerPart = (int)(Value);
+    DecimalPart = 100 * (Value - IntegerPart);
+    DecimalPart = abs(DecimalPart);
+  } else DecimalPart = 0;
+  return DecimalPart;
+}
+
+
+int ExInt(float Value) {
+  int IntegerPart = (int)(Value);
+  int DecimalPart = 10000 * (Value - IntegerPart);
+  IntegerPart = abs(IntegerPart);
+  return IntegerPart;
+}
+
+int ExSign(float Value) {
+  int Sign;
+  if (Value > 0) Sign = 1;
+  else Sign = -1;
+  return Sign;
+}
+
+double deg2rad(int deg) {
+  double rad = deg * (PI / 180);
+  return rad;
+}
+
+void initializeMB() {
+  mb.server();
+
+  mb.addHreg(y1_HREG, 0);
+  mb.addHreg(y2_HREG, 0);
+  mb.addHreg(y3_HREG, 0);
+  mb.addHreg(y1d_HREG, 0);
+  mb.addHreg(y2d_HREG, 0);
+  mb.addHreg(y3d_HREG, 0);
+  mb.addHreg(y1dd_HREG, 0);
+  mb.addHreg(y2dd_HREG, 0);
+  mb.addHreg(y3dd_HREG, 0);
+  mb.addHreg(y1v_HREG, 0);
+  mb.addHreg(y2v_HREG, 0);
+  mb.addHreg(y3v_HREG, 0);
+  mb.addHreg(y1m_HREG, 0);
+  mb.addHreg(y2m_HREG, 0);
+  mb.addHreg(y3m_HREG, 0);
+  mb.addHreg(y1o_HREG, 0);
+  mb.addHreg(y2o_HREG, 0);
+  mb.addHreg(y3o_HREG, 0);
+  mb.addHreg(y1kp_HREG, 0);
+  mb.addHreg(y2kp_HREG, 0);
+  mb.addHreg(y3kp_HREG, 0);
+  mb.addHreg(y1ki_HREG, 0);
+  mb.addHreg(y2ki_HREG, 0);
+  mb.addHreg(y3ki_HREG, 0);
+  mb.addHreg(y1kd_HREG, 0);
+  mb.addHreg(y2kd_HREG, 0);
+  mb.addHreg(y3kd_HREG, 0);
+}
+
+
+void modbusW() {
+  mb.Hreg(y1_HREG, ExSign(Setpoint));
+  mb.Hreg(y2_HREG, ExInt(Setpoint));
+  mb.Hreg(y3_HREG, ExDec(Setpoint));
+  mb.Hreg(y1d_HREG, ExSign(aPos));
+  mb.Hreg(y2d_HREG, ExInt(aPos));
+  mb.Hreg(y3d_HREG, ExDec(aPos));
+  mb.Hreg(y1dd_HREG, ExSign(error));
+  mb.Hreg(y2dd_HREG, ExInt(error));
+  mb.Hreg(y3dd_HREG, ExDec(error));
+  mb.Hreg(y1v_HREG, ExSign(aVel));
+  mb.Hreg(y2v_HREG, ExInt(aVel));
+  mb.Hreg(y3v_HREG, ExDec(aVel));
+  mb.Hreg(y1m_HREG, ExSign(OutputL));
+  mb.Hreg(y2m_HREG, ExInt(OutputL));
+  mb.Hreg(y3m_HREG, ExDec(OutputL));
+  mb.Hreg(y1o_HREG, ExSign(cte));
+  mb.Hreg(y2o_HREG, ExInt(cte));
+  mb.Hreg(y3o_HREG, ExDec(cte));
+  mb.Hreg(y1kp_HREG, ExSign(Kp));
+  mb.Hreg(y2kp_HREG, ExInt(Kp));
+  mb.Hreg(y3kp_HREG, ExDec(Kp));
+  mb.Hreg(y1ki_HREG, ExSign(Ki * 100000));
+  mb.Hreg(y2ki_HREG, ExInt(Ki * 100000));
+  mb.Hreg(y3ki_HREG, ExDec(Ki * 100000));
+  mb.Hreg(y1kd_HREG, ExSign(Kd));
+  mb.Hreg(y2kd_HREG, ExInt(Kd));
+  mb.Hreg(y3kd_HREG, ExDec(Kd));
+  mb.task();
 }
